@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<meta name="format-detection" content="telephone=no">
+<title>買い物リスト</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="買い物リスト">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0E6B55">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app" class="app">
+
+  <!-- ===== リスト画面 ===== -->
+  <header class="top">
+    <div class="top-row">
+      <div class="top-title">
+        <h1>買い物リスト</h1>
+        <p id="remain" class="remain">残り 0件</p>
+      </div>
+      <div class="top-actions">
+        <button type="button" id="btnSearch" class="icon-btn" aria-pressed="false">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-4.6-4.6"/></svg>
+          <span>さがす</span>
+        </button>
+        <button type="button" id="btnWake" class="icon-btn" aria-pressed="false" hidden>
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/></svg>
+          <span>画面オン</span>
+        </button>
+        <button type="button" id="btnSettings" class="icon-btn">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h9M17 7h3M4 12h3M11 12h9M4 17h11M19 17h1"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="17" r="2"/></svg>
+          <span>設定</span>
+          <i id="settingsDot" class="dot" hidden></i>
+        </button>
+      </div>
+    </div>
+    <div id="filterSeg" class="seg" role="group" aria-label="絞り込み">
+      <button type="button" data-filter="all" aria-pressed="true">すべて</button>
+      <button type="button" data-filter="food" aria-pressed="false">食品</button>
+      <button type="button" data-filter="nonfood" aria-pressed="false">食品以外</button>
+    </div>
+    <div id="searchBar" class="search-bar" hidden>
+      <input id="searchInput" type="search" inputmode="search" enterkeyhint="search" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="60" placeholder="名前でさがす" aria-label="名前でさがす">
+      <button type="button" id="searchClose" class="search-close">閉じる</button>
+    </div>
+  </header>
+
+  <main id="list" class="list" aria-live="off"></main>
+
+  <div class="bottom-wrap" id="bottomWrap">
+    <div id="suggest" class="suggest" hidden></div>
+    <footer class="bottom">
+      <form id="quickForm" class="quick" autocomplete="off">
+        <input id="quickInput" type="text" enterkeyhint="done" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="60" placeholder="品名を入れて追加" aria-label="追加する品名">
+        <button type="submit" id="btnAdd" class="btn primary">＋追加</button>
+      </form>
+      <button type="button" id="btnFinish" class="btn finish" disabled>お買い物終了</button>
+    </footer>
+  </div>
+
+  <!-- ===== 追加・編集シート ===== -->
+  <div id="sheetBackdrop" class="backdrop" hidden></div>
+  <section id="sheet" class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" hidden>
+    <div class="sheet-head">
+      <button type="button" id="sheetCancel" class="link-btn">キャンセル</button>
+      <h2 id="sheetTitle">品目を追加</h2>
+      <button type="button" id="sheetSave" class="link-btn strong">保存</button>
+    </div>
+    <div class="sheet-body">
+      <div class="field">
+        <label class="field-label" for="fName">名前</label>
+        <input id="fName" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="60" enterkeyhint="done">
+        <p id="fNameError" class="field-error" hidden></p>
+      </div>
+      <div class="field">
+        <span class="field-label">分類</span>
+        <div id="fCats" class="chips"></div>
+      </div>
+      <div class="field">
+        <span class="field-label">種類</span>
+        <div id="fKind" class="seg2" role="group" aria-label="種類">
+          <button type="button" data-kind="once" aria-pressed="true">単発</button>
+          <button type="button" data-kind="regular" aria-pressed="false">定番</button>
+        </div>
+        <p class="hint">定番は「お買い物終了」のあとも「買ったもの・在庫あり」に残ります。なくなったらチェックを外して買い直せます。</p>
+      </div>
+      <div class="field">
+        <span class="field-label">写真</span>
+        <div class="photo-row">
+          <button type="button" id="fPhotoPreview" class="photo-preview" aria-label="写真を大きく表示" hidden><img id="fPhotoImg" alt=""></button>
+          <div class="photo-buttons">
+            <label class="btn outline file-btn" id="fPhotoLabel">
+              <span id="fPhotoLabelText">写真を選ぶ・撮る</span>
+              <input id="fPhotoInput" type="file" accept="image/*" class="file-input">
+            </label>
+            <button type="button" id="fPhotoRemove" class="link-btn danger" hidden>写真を外す</button>
+          </div>
+        </div>
+      </div>
+      <div class="field">
+        <label class="field-label" for="fMemo">メモ</label>
+        <textarea id="fMemo" rows="2" maxlength="200" autocomplete="off"></textarea>
+      </div>
+      <button type="button" id="fDelete" class="btn danger-outline" hidden>この品目を削除</button>
+    </div>
+  </section>
+
+  <!-- ===== 設定画面 ===== -->
+  <section id="settings" class="panel" role="dialog" aria-modal="true" aria-labelledby="settingsTitle" hidden>
+    <header class="top panel-top">
+      <div class="top-row">
+        <h2 id="settingsTitle">設定</h2>
+        <button type="button" id="settingsClose" class="panel-close">閉じる</button>
+      </div>
+    </header>
+    <div class="panel-body">
+
+      <section class="card">
+        <h3>バックアップ</h3>
+        <p id="backupInfo" class="note"></p>
+        <p id="backupWarn" class="warn" hidden>前回のバックアップから30日以上たっています。書き出しておくと安心です。</p>
+        <button type="button" id="btnExport" class="btn primary block">バックアップを書き出す</button>
+        <label class="btn outline block file-btn">
+          <span>バックアップを読み込む</span>
+          <input id="importInput" type="file" accept=".json,application/json" class="file-input">
+        </label>
+        <p class="note">リストと写真を1つのファイルにまとめます。ホーム画面のアイコンを削除するとデータも消えるので、ときどき書き出してください。</p>
+      </section>
+
+      <section class="card">
+        <details id="catDetails">
+          <summary><h3>分類の編集</h3></summary>
+          <p class="note">名前を書き換えるとそのまま保存されます。区分は「食品／食品以外」の絞り込みに使います。「区分なし」はどの絞り込みでも表示します。</p>
+          <div id="catEditor" class="cat-editor"></div>
+          <form id="catAddForm" class="cat-add" autocomplete="off">
+            <input id="catAddInput" type="text" maxlength="20" placeholder="新しい分類の名前" aria-label="新しい分類の名前" autocomplete="off" autocapitalize="off">
+            <button type="submit" class="btn primary">追加</button>
+          </form>
+        </details>
+      </section>
+
+      <section class="card">
+        <h3>入力候補</h3>
+        <p class="note">以前に登録した名前と分類を覚えていて、入力中の候補に出します。</p>
+        <button type="button" id="btnClearHistory" class="btn outline block">入力候補の記憶を消す</button>
+      </section>
+
+      <section class="card">
+        <h3>使用容量の目安</h3>
+        <p id="storageInfo" class="note">計算中…</p>
+      </section>
+
+      <section class="card">
+        <h3>ホーム画面への追加方法</h3>
+        <ol class="steps">
+          <li>iPhoneのSafariでこのページを開きます。</li>
+          <li>共有ボタン（四角から上向きの矢印）をタップします。見当たらない時は「…」の中にあります。</li>
+          <li>「ホーム画面に追加」を選び、「追加」をタップします。「Webアプリとして開く」の切替がある場合はオンのままにします。</li>
+          <li>ホーム画面にできた「買い物リスト」のアイコンから開きます。</li>
+        </ol>
+        <p class="note">Safariで開いた時とホーム画面から開いた時では、データの保存場所が別です。品目の登録は、ホーム画面のアイコンから開いて行ってください。</p>
+      </section>
+
+      <section class="card">
+        <h3>全データ削除</h3>
+        <p class="note">品目・写真・分類の変更・入力候補をすべて消して、最初の状態に戻します。</p>
+        <button type="button" id="btnWipe" class="btn danger-outline block">全データを削除する</button>
+      </section>
+
+      <p id="versionInfo" class="version"></p>
+    </div>
+  </section>
+
+  <!-- ===== 写真の全画面表示 ===== -->
+  <div id="viewer" class="viewer" role="dialog" aria-modal="true" aria-label="写真" hidden>
+    <img id="viewerImg" alt="">
+    <button type="button" id="viewerClose" class="viewer-close">閉じる</button>
+  </div>
+
+  <!-- ===== 確認ダイアログ ===== -->
+  <div id="dialogBackdrop" class="backdrop dialog-backdrop" hidden>
+    <div id="dialog" class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="dialogTitle">
+      <h2 id="dialogTitle"></h2>
+      <p id="dialogMsg"></p>
+      <div id="dialogButtons" class="dialog-buttons"></div>
+    </div>
+  </div>
+
+  <!-- ===== お知らせ（トースト） ===== -->
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden>
+    <span id="toastMsg"></span>
+    <button type="button" id="toastAction" hidden></button>
+  </div>
+</div>
+
+<noscript><p class="noscript">このアプリを使うには、SafariのJavaScriptを有効にしてください。</p></noscript>
+<script src="app.js"></script>
+</body>
+</html>
